@@ -12,6 +12,8 @@ public class Server implements Runnable {
     private ArrayList<String> acceptVal;
     private Client client;
     private int majorBlockNumbers;
+    public static int ballotNum = 0;
+    private ArrayList<Integer> lastBallotNumber;
 
     public Server(String serverName) {
         this.serverName = serverName;
@@ -23,6 +25,7 @@ public class Server implements Runnable {
         this.acceptVal = null;
         this.client = null;
         this.majorBlockNumbers = 0;
+        this.lastBallotNumber = null;
     }
 
     public String getServerName() {
@@ -79,6 +82,12 @@ public class Server implements Runnable {
     public void addToDatastore(MajorBlock majorBlock) {
         this.datastore.add(majorBlock);
     }
+    public ArrayList<Integer> getLastBallotNumber() {
+        return this.lastBallotNumber;
+    }
+    public void setLastBallotNumber(ArrayList<Integer> lastBallotNumber) {
+        this.lastBallotNumber = lastBallotNumber;
+    }
     public void run() {
         try {
             System.out.println("Thread " + this.getServerName() + " is running");
@@ -94,6 +103,7 @@ public class Server implements Runnable {
             client.setBalance(this.getBalance());
             System.out.println("Client and server: " + this.getServerName() + " balance is now:" + this.getBalance());
         } else {
+            ballotNum += 1;
             System.out.println("Paxos needs to be initiated");
         }
     }

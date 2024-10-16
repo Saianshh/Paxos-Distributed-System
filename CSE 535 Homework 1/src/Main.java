@@ -27,6 +27,7 @@ public class Main {
             ArrayList<String> value = entry.getValue();
             System.out.println(key + ": " + value);
         }
+
         // Generate server stuff here
         // 5 servers, 5 clients in every case
 //        Client c1 = new Client("C1");
@@ -40,8 +41,8 @@ public class Main {
             String clientName = "C" + (i+1);
             clients[i] = new Client(clientName);
         }
-
         Server[] servers = new Server[5];
+        // Starting servers and threads for each server
         for(int i = 0; i < 5; i++) {
             if(i == 0) {
                 servers[i] = new Server("S1");
