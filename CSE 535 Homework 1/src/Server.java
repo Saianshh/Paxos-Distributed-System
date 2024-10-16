@@ -92,6 +92,7 @@ public class Server implements Runnable {
             this.setBalance(this.getBalance() - t.getAmt());
             this.addToLocalLog(t);
             client.setBalance(this.getBalance());
+            System.out.println("Client and server: " + this.getServerName() + " balance is now:" + this.getBalance());
         } else {
             System.out.println("Paxos needs to be initiated");
         }

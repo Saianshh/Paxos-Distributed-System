@@ -29,38 +29,44 @@ public class Main {
         }
         // Generate server stuff here
         // 5 servers, 5 clients in every case
-        Client A = new Client("A");
-        Client B = new Client("B");
-        Client C = new Client("C");
-        Client D = new Client("D");
-        Client E = new Client("E");
+//        Client c1 = new Client("C1");
+//        Client c2 = new Client("C2");
+//        Client c3 = new Client("C3");
+//        Client c4 = new Client("C4");
+//        Client c5 = new Client("C5");
+
+        Client[] clients = new Client[5];
+        for(int i = 0; i < 5; i++) {
+            String clientName = "C" + (i+1);
+            clients[i] = new Client(clientName);
+        }
 
         Server[] servers = new Server[5];
         for(int i = 0; i < 5; i++) {
             if(i == 0) {
-                servers[i] = new Server("A");
-                servers[i].setClient(A);
-                A.setServer(servers[i]);
+                servers[i] = new Server("S1");
+                servers[i].setClient(clients[i]);
+                clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 1) {
-                servers[i] = new Server("B");
-                servers[i].setClient(B);
-                B.setServer(servers[i]);
+                servers[i] = new Server("S2");
+                servers[i].setClient(clients[i]);
+                clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 2) {
-                servers[i] = new Server("C");
-                servers[i].setClient(C);
-                C.setServer(servers[i]);
+                servers[i] = new Server("S3");
+                servers[i].setClient(clients[i]);
+                clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 3) {
-                servers[i] = new Server("D");
-                servers[i].setClient(D);
-                D.setServer(servers[i]);
+                servers[i] = new Server("S4");
+                servers[i].setClient(clients[i]);
+                clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 4) {
-                servers[i] = new Server("E");
-                servers[i].setClient(E);
-                E.setServer(servers[i]);
+                servers[i] = new Server("S5");
+                servers[i].setClient(clients[i]);
+                clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             }
         }
@@ -84,6 +90,12 @@ public class Main {
             System.out.println(transferAmount);
             // put these in a transaction object
             // send to client to do transaction
+            int amount = Integer.parseInt(transferAmount);
+            Transaction t = new Transaction(firstServer, secondServer, amount);
+            // Have this transaction be sent from the right client
+            int clientIndex = Character.getNumericValue(firstServer.charAt(1)) - 1;
+            clients[clientIndex].sendTransaction(t);
+            
         }
         // Each entry of hashmap is a new set, do a loop through all of them, after completion prompt user with menu
 
