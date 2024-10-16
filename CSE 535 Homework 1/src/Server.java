@@ -81,7 +81,7 @@ public class Server implements Runnable {
     }
     public void run() {
         try {
-            System.out.println("Thread " + Thread.currentThread().getId() + " is running");
+            System.out.println("Thread " + this.getServerName() + " is running");
 
         } catch (Exception e) {
             throw new RuntimeException(e);
