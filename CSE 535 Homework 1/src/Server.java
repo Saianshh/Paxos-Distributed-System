@@ -1,6 +1,7 @@
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.net.*;
+import java.io.*;
 
 public class Server implements Runnable {
     private String serverName;
@@ -14,8 +15,10 @@ public class Server implements Runnable {
     private int majorBlockNumbers;
     public static int ballotNum = 0;
     private ArrayList<Integer> lastBallotNumber;
+    private int port;
+    private Paxos paxos;
 
-    public Server(String serverName) {
+    public Server(String serverName, int port) {
         this.serverName = serverName;
         this.balance = 100;
         this.leader = false;
@@ -26,6 +29,8 @@ public class Server implements Runnable {
         this.client = null;
         this.majorBlockNumbers = 0;
         this.lastBallotNumber = null;
+        this.port = port;
+//        this.paxos = new Paxos();
     }
 
     public String getServerName() {
@@ -88,10 +93,51 @@ public class Server implements Runnable {
     public void setLastBallotNumber(ArrayList<Integer> lastBallotNumber) {
         this.lastBallotNumber = lastBallotNumber;
     }
+    public int getPort() {
+        return this.port;
+    }
+    public void setPort(int port) {
+        this.port = port;
+    }
+    public Paxos getPaxos() {
+        return this.paxos;
+    }
+    public void setPaxos(Paxos paxos) {
+        this.paxos = paxos;
+    }
     public void run() {
         try {
+            ServerSocket serverSocket = new ServerSocket(port);
             System.out.println("Thread " + this.getServerName() + " is running");
+            System.out.println("Server " + this.getServerName() + " listening on port " + port);
+            while (true) {
+                // Wait for a client to send a transaction
+                Socket clientSocket = serverSocket.accept();
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
 
+                // Read transaction details from the client
+                String transactionDetails = in.readLine();
+                // Have in the first index have the name of the person sending message, if client it's a transaction,
+                // if other server then paxos
+                String[] details = transactionDetails.split(",");
+                String sender = details[0];
+                String receiver = details[1];
+                int amount = Integer.parseInt(details[2]);
+
+                // Process the transaction
+                Transaction t = new Transaction(sender, receiver, amount);
+                this.performTransaction(t);
+
+                // Send confirmation back to the client
+                if (balance >= amount) {
+                    out.println("Transaction successful.");
+                } else {
+                    out.println("Paxos initiated");
+                }
+
+                clientSocket.close();
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -105,6 +151,9 @@ public class Server implements Runnable {
         } else {
             ballotNum += 1;
             System.out.println("Paxos needs to be initiated");
+            // Send to paxos problem (class), say solve this problem for me
+            // message passing between threads
+
         }
     }
 

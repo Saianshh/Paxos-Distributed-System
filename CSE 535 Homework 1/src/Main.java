@@ -4,9 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 public class Main {
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws IOException {
         // Replace with input file for testing
-        Scanner in = new Scanner(new File("C:\\Users\\Sai\\IdeaProjects\\CSE 535 Homework 1\\src\\lab1_Test.csv"));
+        // Changed input path and firstFirst to get(0)
+        Scanner in = new Scanner(new File("/Users/saiansh/CSE-535-Homework-1/CSE 535 Homework 1/src/lab1_Test.csv"));
 
         // Parsing the input file and saving contents
         HashMap<Integer, ArrayList<String>> sets = new HashMap<Integer, ArrayList<String>>();
@@ -28,52 +29,50 @@ public class Main {
             System.out.println(key + ": " + value);
         }
 
-        // Generate server stuff here
-        // 5 servers, 5 clients in every case
-//        Client c1 = new Client("C1");
-//        Client c2 = new Client("C2");
-//        Client c3 = new Client("C3");
-//        Client c4 = new Client("C4");
-//        Client c5 = new Client("C5");
-
+        int[] ports = {5000, 5001, 5002, 5003, 5004};
         Client[] clients = new Client[5];
         for(int i = 0; i < 5; i++) {
             String clientName = "C" + (i+1);
-            clients[i] = new Client(clientName);
+            clients[i] = new Client(clientName, ports[i]);
         }
         Server[] servers = new Server[5];
+
         // Starting servers and threads for each server
         for(int i = 0; i < 5; i++) {
             if(i == 0) {
-                servers[i] = new Server("S1");
+                servers[i] = new Server("S1", ports[i]);
                 servers[i].setClient(clients[i]);
                 clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 1) {
-                servers[i] = new Server("S2");
+                servers[i] = new Server("S2", ports[i]);
                 servers[i].setClient(clients[i]);
                 clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 2) {
-                servers[i] = new Server("S3");
+                servers[i] = new Server("S3", ports[i]);
                 servers[i].setClient(clients[i]);
                 clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 3) {
-                servers[i] = new Server("S4");
+                servers[i] = new Server("S4", ports[i]);
                 servers[i].setClient(clients[i]);
                 clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             } else if(i == 4) {
-                servers[i] = new Server("S5");
+                servers[i] = new Server("S5", ports[i]);
                 servers[i].setClient(clients[i]);
                 clients[i].setServer(servers[i]);
                 new Thread(servers[i]).start();
             }
         }
+        Paxos paxos = new Paxos(servers[0], servers[1], servers[2], servers[3], servers[4]);
+        for(int i = 0; i < servers.length; i++) {
+            servers[i].setPaxos(paxos);
+        }
         // Get first set of transactions and attempt to run with it
         System.out.println(sets.get(1));
-        String[] aliveServers = sets.get(1).getFirst().split(", ");
+        String[] aliveServers = sets.get(1).get(0).split(", ");
         for(int i = 0; i < aliveServers.length; i++) {
             aliveServers[i] = aliveServers[i].replaceAll("\\[", "");
             aliveServers[i] = aliveServers[i].replaceAll("]", "");
@@ -88,7 +87,6 @@ public class Main {
             // Have this transaction be sent from the right client
             int clientIndex = Character.getNumericValue(firstServer.charAt(1)) - 1;
             clients[clientIndex].sendTransaction(t);
-
         }
         // Each entry of hashmap is a new set, do a loop through all of them, after completion of each set prompt user with menu
 
