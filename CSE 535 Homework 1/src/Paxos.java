@@ -23,5 +23,15 @@ public class Paxos {
     public void setServers(ArrayList<Server> servers) {
         this.servers = servers;
     }
+    public void preparePhase(Server leader) {
+        System.out.println("In the prepare phase of paxos");
+        for (Server server : this.servers) {
+            if (!leader.getServerName().equals(server.getServerName())) {
+                Server.ballotNum += 1;
+                // Prepare message will look like: Paxos,PREPARE,1 1,lastCommittedBlock
+                leader.sendMessage(server.getPort(), "Paxos,PREPARE," + Server.ballotNum + leader.getServerName().charAt(1) + " from " + leader.getServerName());
+            }
+        }
+    }
 
 }

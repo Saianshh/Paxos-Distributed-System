@@ -118,6 +118,7 @@ public class Server implements Runnable {
 
                 // Read transaction details from the client
                 String transactionDetails = in.readLine();
+                System.out.println(transactionDetails);
                 // Have in the first index have the name of the person sending message, if client it's a transaction,
                 // if other server then paxos
                 String[] details = transactionDetails.split(",");
@@ -151,9 +152,19 @@ public class Server implements Runnable {
         } else {
             ballotNum += 1;
             System.out.println("Paxos needs to be initiated");
+            this.paxos.preparePhase(this);
             // Send to paxos problem (class), say solve this problem for me
             // message passing between threads
 
+        }
+    }
+    public void sendMessage(int port, String message) {
+        try {
+            Socket socket = new Socket("localhost", port);
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            out.println(message);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
