@@ -1,4 +1,6 @@
-public class Transaction {
+import java.io.Serializable;
+
+public class Transaction implements Serializable {
     private String s1;
     private String s2;
     private int amt;

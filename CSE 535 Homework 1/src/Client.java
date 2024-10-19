@@ -3,7 +3,7 @@ import java.net.*;
 import java.util.*;
 import java.io.*;
 
-public class Client {
+public class Client implements Serializable {
     private String clientName;
     private int balance;
     private Server server;
@@ -39,11 +39,12 @@ public class Client {
         System.out.println("CLIENT SIDE PRE SOCKET: " + t.getS1() + " sending " + t.getAmt() + " to " + t.getS2());
         try {
             Socket socket = new Socket("localhost", this.port);
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+//            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             // Send the transaction details to the server
-            out.println(t.getS1() + "," + t.getS2() + "," + t.getAmt());
+            out.writeObject(t.getS1() + "," + t.getS2() + "," + t.getAmt());
 
             // Get confirmation from the server
             String confirmation = in.readLine();

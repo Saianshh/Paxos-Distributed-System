@@ -1,15 +1,16 @@
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.net.*;
 import java.io.*;
 
-public class Server implements Runnable {
+public class Server implements Runnable, Serializable {
     private String serverName;
     private int balance;
     private boolean leader;
     private ArrayList<Transaction> localLog;
     private LinkedList<MajorBlock> datastore;
-    private String acceptNum;
+    private ArrayList<Integer> acceptNum;
     private ArrayList<String> acceptVal;
     private Client client;
     private int majorBlockNumbers;
@@ -60,10 +61,10 @@ public class Server implements Runnable {
     public void addToLocalLog(Transaction t) {
         this.localLog.add(t);
     }
-    public String getAcceptNum() {
+    public ArrayList<Integer> getAcceptNum() {
         return this.acceptNum;
     }
-    public void setAcceptNum(String acceptNum) {
+    public void setAcceptNum(ArrayList<Integer> acceptNum) {
         this.acceptNum = acceptNum;
     }
     public ArrayList<String> getAcceptVal() {
@@ -113,28 +114,28 @@ public class Server implements Runnable {
             while (true) {
                 // Wait for a client to send a transaction
                 Socket clientSocket = serverSocket.accept();
-                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+//                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+//                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+                InputStream inputStream = clientSocket.getInputStream();
+                ObjectInputStream objectInputStream = new ObjectInputStream(inputStream);
+                Object object = objectInputStream.readObject();
+                if(object instanceof String) {
+                    String[] details = ((String) object).split(",");
+                    String sender = details[0];
+                    String receiver = details[1];
+                    int amount = Integer.parseInt(details[2]);
 
-                // Read transaction details from the client
-                String transactionDetails = in.readLine();
-                System.out.println(transactionDetails);
-                // Have in the first index have the name of the person sending message, if client it's a transaction,
-                // if other server then paxos
-                String[] details = transactionDetails.split(",");
-                String sender = details[0];
-                String receiver = details[1];
-                int amount = Integer.parseInt(details[2]);
+                    // Process the transaction
+                    Transaction t = new Transaction(sender, receiver, amount);
+                    this.performTransaction(t);
+                }
 
-                // Process the transaction
-                Transaction t = new Transaction(sender, receiver, amount);
-                this.performTransaction(t);
-
-                // Send confirmation back to the client
-                if (balance >= amount) {
-                    out.println("Transaction successful.");
-                } else {
-                    out.println("Paxos initiated");
+                if(object instanceof PrepareMessage) {
+                    System.out.println("Paxos was initiated");
+                    PrepareMessage message = (PrepareMessage) object;
+                    System.out.println("RECEIVED PREPARE OBJECT FROM OTHER SERVER" + message.n);
+                    PromiseMessage promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, this.localLog);
+                    message.paxos.acceptPhase(promiseMessage);
                 }
 
                 clientSocket.close();
@@ -147,12 +148,15 @@ public class Server implements Runnable {
         if(this.getBalance() >= t.getAmt()) {
             this.setBalance(this.getBalance() - t.getAmt());
             this.addToLocalLog(t);
-            client.setBalance(this.getBalance());
+            // don't reply to client
+//            client.setBalance(this.getBalance());
+
             System.out.println("Client and server: " + this.getServerName() + " balance is now:" + this.getBalance());
         } else {
             ballotNum += 1;
             System.out.println("Paxos needs to be initiated");
-            this.paxos.preparePhase(this);
+            this.paxos.setLeader(this);
+            this.paxos.preparePhase();
             // Send to paxos problem (class), say solve this problem for me
             // message passing between threads
 
@@ -161,8 +165,34 @@ public class Server implements Runnable {
     public void sendMessage(int port, String message) {
         try {
             Socket socket = new Socket("localhost", port);
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            out.println(message);
+//            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            out.writeObject(message);
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void sendPrepareMessage(int port, PrepareMessage message) {
+        try {
+            Socket socket = new Socket("localhost", port);
+//            OutputStream outputStream = socket.getOutputStream();
+//            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            out.writeObject(message);
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void sendPromiseMessage(int port, PromiseMessage message) {
+        try {
+            Socket socket = new Socket("localhost", port);
+//            OutputStream outputStream = socket.getOutputStream();
+//            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            out.writeObject(message);
+            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
