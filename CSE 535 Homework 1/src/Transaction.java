@@ -19,4 +19,9 @@ public class Transaction implements Serializable {
     public int getAmt() {
         return this.amt;
     }
+
+    @Override
+    public String toString() {
+        return "(" + this.s1 + ", " + this.s2 + ", " + this.amt + ")";
+    }
 }

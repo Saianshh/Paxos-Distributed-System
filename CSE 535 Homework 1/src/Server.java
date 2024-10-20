@@ -11,13 +11,16 @@ public class Server implements Runnable, Serializable {
     private ArrayList<Transaction> localLog;
     private LinkedList<MajorBlock> datastore;
     private ArrayList<Integer> acceptNum;
-    private ArrayList<String> acceptVal;
+    private MajorBlock acceptVal;
     private Client client;
     private int majorBlockNumbers;
     public static int ballotNum = 0;
     private ArrayList<Integer> lastBallotNumber;
     private int port;
     private Paxos paxos;
+    private int numPromiseMessages;
+    private ArrayList<Transaction> loggedPromises;
+    private boolean enteredAccept = false;
 
     public Server(String serverName, int port) {
         this.serverName = serverName;
@@ -32,6 +35,7 @@ public class Server implements Runnable, Serializable {
         this.lastBallotNumber = null;
         this.port = port;
 //        this.paxos = new Paxos();
+        this.loggedPromises = new ArrayList<>();
     }
 
     public String getServerName() {
@@ -67,10 +71,10 @@ public class Server implements Runnable, Serializable {
     public void setAcceptNum(ArrayList<Integer> acceptNum) {
         this.acceptNum = acceptNum;
     }
-    public ArrayList<String> getAcceptVal() {
+    public MajorBlock getAcceptVal() {
         return this.acceptVal;
     }
-    public void setAcceptVal(ArrayList<String> acceptVal) {
+    public void setAcceptVal(MajorBlock acceptVal) {
         this.acceptVal = acceptVal;
     }
     public Client getClient() {
@@ -106,6 +110,9 @@ public class Server implements Runnable, Serializable {
     public void setPaxos(Paxos paxos) {
         this.paxos = paxos;
     }
+    public void addToLoggedPromises(Transaction loggedPromise) {
+        loggedPromises.add(loggedPromise);
+    }
     public void run() {
         try {
             ServerSocket serverSocket = new ServerSocket(port);
@@ -124,18 +131,60 @@ public class Server implements Runnable, Serializable {
                     String sender = details[0];
                     String receiver = details[1];
                     int amount = Integer.parseInt(details[2]);
-
                     // Process the transaction
                     Transaction t = new Transaction(sender, receiver, amount);
                     this.performTransaction(t);
-                }
-
-                if(object instanceof PrepareMessage) {
+                } else if (object instanceof PrepareMessage) {
                     System.out.println("Paxos was initiated");
                     PrepareMessage message = (PrepareMessage) object;
                     System.out.println("RECEIVED PREPARE OBJECT FROM OTHER SERVER" + message.n);
                     PromiseMessage promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, this.localLog);
-                    message.paxos.acceptPhase(promiseMessage);
+                    message.paxos.promisePhase(promiseMessage, this.getServerName());
+                } else if (object instanceof PromiseMessage) {
+                    System.out.println("Leader receiving promise message");
+                    this.numPromiseMessages += 1;
+                    PromiseMessage message = (PromiseMessage) object;
+                    System.out.println("LOCAL LOGS:" + message.localLog);
+                    if (this.numPromiseMessages == 2) {
+                        // send own for majority
+                        for (int i = 0; i < this.localLog.size(); i++) {
+                            this.addToLoggedPromises(this.localLog.get(i));
+                        }
+                        this.numPromiseMessages += 1;
+                    }
+                    System.out.println("LOCAL LOGS2: " + message.localLog);
+                    if (message.acceptNum == null && message.acceptVal == null) {
+                        // T'(S)
+                        System.out.println("LOCAL LOGS3: " + message.localLog);
+                        for (int i = 0; i < message.localLog.size(); i++) {
+                            this.addToLoggedPromises(message.localLog.get(i));
+                        }
+                    }
+                    if (this.numPromiseMessages >= 3 && !this.enteredAccept) {
+//                        System.out.println(this.numPromiseMessages);
+                        this.enteredAccept = true;
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(50);
+                                MajorBlock block = new MajorBlock(loggedPromises, message.n);
+                                this.paxos.acceptPhase(block, message.n);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }).start();
+                    }
+                } else if (object instanceof AcceptMessage) {
+                    System.out.println("RECEIVED ACCEPT MESSAGE FROM LEADER");
+                    // Update acceptNum and acceptVal
+                    AcceptMessage message = (AcceptMessage) object;
+                    this.acceptNum = message.n;
+                    this.acceptVal = message.block;
+                    // Send accepted message
+                    AcceptedMessage acceptedMessage = new AcceptedMessage(message.n, message.block);
+                    message.paxos.acceptedPhase(acceptedMessage, this.getServerName());
+                } else if (object instanceof AcceptedMessage) {
+                    System.out.println(this.getServerName() + " LEADER RECEIVED ACCEPTED MESSAGE");
+
                 }
 
                 clientSocket.close();
@@ -156,6 +205,9 @@ public class Server implements Runnable, Serializable {
             ballotNum += 1;
             System.out.println("Paxos needs to be initiated");
             this.paxos.setLeader(this);
+            this.numPromiseMessages = 0;
+            this.loggedPromises = new ArrayList<>();
+            this.enteredAccept = false;
             this.paxos.preparePhase();
             // Send to paxos problem (class), say solve this problem for me
             // message passing between threads
@@ -197,6 +249,29 @@ public class Server implements Runnable, Serializable {
             e.printStackTrace();
         }
     }
-
+    public void sendAcceptMessage(int port, AcceptMessage message) {
+        try {
+            Socket socket = new Socket("localhost", port);
+//            OutputStream outputStream = socket.getOutputStream();
+//            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            out.writeObject(message);
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void sendAcceptedMessage(int port, AcceptedMessage message) {
+        try {
+            Socket socket = new Socket("localhost", port);
+//            OutputStream outputStream = socket.getOutputStream();
+//            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            out.writeObject(message);
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 }

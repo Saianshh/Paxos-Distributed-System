@@ -50,9 +50,35 @@ public class Paxos implements Serializable {
         }
 
     }
-    public void acceptPhase(PromiseMessage promiseMessage) {
+    public void promisePhase(PromiseMessage promiseMessage, String serverName) {
         // send to leader
         // leader needs 3 nodes to keep going with paxos
+        // if no agreement, go to next set, keep local logs
+//        System.out.println("IN PROMISE PHASE");
+        for (Server server : this.servers) {
+            if (server.getServerName().equals(serverName)) {
+                server.sendPromiseMessage(this.leader.getPort(), promiseMessage);
+            }
+        }
+
+    }
+    public void acceptPhase(MajorBlock block, ArrayList<Integer> ballotNum) {
+        System.out.println("IN ACCEPT PHASE");
+        System.out.println(block.getLocalTransactions());
+        for (Server server : this.servers) {
+            if (!this.leader.getServerName().equals(server.getServerName())) {
+                AcceptMessage acceptMessage = new AcceptMessage(ballotNum, block, this);
+                this.leader.sendAcceptMessage(server.getPort(), acceptMessage);
+            }
+        }
+    }
+    public void acceptedPhase(AcceptedMessage acceptedMessage, String serverName) {
+        // Send accepted message to leader, which then commits
+        for (Server server : this.servers) {
+            if (server.getServerName().equals(serverName)) {
+                server.sendAcceptedMessage(this.leader.getPort(), acceptedMessage);
+            }
+        }
     }
 
 }
