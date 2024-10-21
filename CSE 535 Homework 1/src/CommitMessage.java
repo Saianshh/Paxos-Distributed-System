@@ -7,9 +7,11 @@ public class CommitMessage implements Serializable {
     private static final long serialVersionUID = 1L;
     public ArrayList<Integer> n;
     public MajorBlock block;
+    public Paxos paxos;
 
-    public CommitMessage(ArrayList<Integer> n, MajorBlock block) {
+    public CommitMessage(ArrayList<Integer> n, MajorBlock block, Paxos paxos) {
         this.n = n;
         this.block = block;
+        this.paxos = paxos;
     }
 }

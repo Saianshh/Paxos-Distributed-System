@@ -7,6 +7,7 @@ public class Paxos implements Serializable {
     private ArrayList<Server> servers;
 //    private ArrayList<String> clients;
     private Server leader;
+    private Transaction initialTransaction;
 
     public Paxos(Server s1, Server s2, Server s3, Server s4, Server s5) {
         this.servers = new ArrayList<Server>();
@@ -34,19 +35,26 @@ public class Paxos implements Serializable {
     public void setLeader(Server leader) {
         this.leader = leader;
     }
-    public void preparePhase() {
+    public void setInitialTransaction(Transaction t) {
+        this.initialTransaction = t;
+    }
+    public Transaction getInitialTransaction() {
+        return this.initialTransaction;
+    }
+    public void preparePhase(Transaction t) {
         System.out.println("In the prepare phase of paxos");
+        this.setInitialTransaction(t);
         for (Server server : this.servers) {
-            if (!this.leader.getServerName().equals(server.getServerName())) {
+//            if (!this.leader.getServerName().equals(server.getServerName())) {
                 // Prepare message will look like: Paxos,PREPARE,1 1,lastCommittedBlock
 //                leader.sendMessage(server.getPort(), "Paxos,PREPARE," + Server.ballotNum + " " + leader.getServerName().charAt(1) + " from " + leader.getServerName());
 //                leader.sendMessage(server.getPort(), "Paxos");
-                ArrayList<Integer> ballotNum = new ArrayList<Integer>();
-                ballotNum.add(Server.ballotNum);
-                ballotNum.add(Character.getNumericValue(this.leader.getServerName().charAt(1)));
-                PrepareMessage message = new PrepareMessage(ballotNum, server.getLastBallotNumber(), this);
-                this.leader.sendPrepareMessage(server.getPort(), message);
-            }
+            ArrayList<Integer> ballotNum = new ArrayList<Integer>();
+            ballotNum.add(Server.ballotNum);
+            ballotNum.add(Character.getNumericValue(this.leader.getServerName().charAt(1)));
+            PrepareMessage message = new PrepareMessage(ballotNum, server.getLastBallotNumber(), this);
+            this.leader.sendPrepareMessage(server.getPort(), message);
+//            }
         }
 
     }
@@ -66,19 +74,32 @@ public class Paxos implements Serializable {
         System.out.println("IN ACCEPT PHASE");
         System.out.println(block.getLocalTransactions());
         for (Server server : this.servers) {
-            if (!this.leader.getServerName().equals(server.getServerName())) {
-                AcceptMessage acceptMessage = new AcceptMessage(ballotNum, block, this);
-                this.leader.sendAcceptMessage(server.getPort(), acceptMessage);
-            }
+//            if (!this.leader.getServerName().equals(server.getServerName())) {
+            AcceptMessage acceptMessage = new AcceptMessage(ballotNum, block, this);
+            this.leader.sendAcceptMessage(server.getPort(), acceptMessage);
+//            }
         }
     }
-    public void acceptedPhase(AcceptedMessage acceptedMessage, String serverName) {
+    public void acceptedPhase(AcceptedMessage acceptedMessage) {
         // Send accepted message to leader, which then commits
         for (Server server : this.servers) {
-            if (server.getServerName().equals(serverName)) {
+            if (server.getServerName().equals(acceptedMessage.serverName)) {
                 server.sendAcceptedMessage(this.leader.getPort(), acceptedMessage);
             }
         }
+    }
+    public void commitPhase(MajorBlock block, ArrayList<Integer> ballotNum, String serverName) {
+        System.out.println("IN COMMIT IN PAXOS CLASS SIZE OF SERVERS: " +this.servers.size());
+        for (Server server : this.servers) {
+            if (serverName.equals(server.getServerName())) {
+                CommitMessage commitMessage = new CommitMessage(ballotNum, block, this);
+                this.leader.sendCommitMessage(server.getPort(), commitMessage);
+            }
+        }
+
+    }
+    public void postPaxos(Server server) {
+        server.performTransaction(this.initialTransaction);
     }
 
 }

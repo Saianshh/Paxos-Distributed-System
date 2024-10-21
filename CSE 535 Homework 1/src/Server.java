@@ -141,17 +141,17 @@ public class Server implements Runnable, Serializable {
                     PromiseMessage promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, this.localLog);
                     message.paxos.promisePhase(promiseMessage, this.getServerName());
                 } else if (object instanceof PromiseMessage) {
-                    System.out.println("Leader receiving promise message");
+                    System.out.println("Leader receiving promise message " + this.serverName + " " + this);
                     this.numPromiseMessages += 1;
                     PromiseMessage message = (PromiseMessage) object;
-                    System.out.println("LOCAL LOGS:" + message.localLog);
-                    if (this.numPromiseMessages == 2) {
-                        // send own for majority
-                        for (int i = 0; i < this.localLog.size(); i++) {
-                            this.addToLoggedPromises(this.localLog.get(i));
-                        }
-                        this.numPromiseMessages += 1;
-                    }
+//                    System.out.println("LOCAL LOGS:" + message.localLog);
+//                    if (this.numPromiseMessages == 2) {
+//                        // send own for majority
+//                        for (int i = 0; i < this.localLog.size(); i++) {
+//                            this.addToLoggedPromises(this.localLog.get(i));
+//                        }
+//                        this.numPromiseMessages += 1;
+//                    }
                     System.out.println("LOCAL LOGS2: " + message.localLog);
                     if (message.acceptNum == null && message.acceptVal == null) {
                         // T'(S)
@@ -174,16 +174,40 @@ public class Server implements Runnable, Serializable {
                         }).start();
                     }
                 } else if (object instanceof AcceptMessage) {
-                    System.out.println("RECEIVED ACCEPT MESSAGE FROM LEADER");
+                    System.out.println("RECEIVED ACCEPT MESSAGE FROM LEADER " + this.serverName + " " + this);
                     // Update acceptNum and acceptVal
                     AcceptMessage message = (AcceptMessage) object;
                     this.acceptNum = message.n;
                     this.acceptVal = message.block;
                     // Send accepted message
-                    AcceptedMessage acceptedMessage = new AcceptedMessage(message.n, message.block);
-                    message.paxos.acceptedPhase(acceptedMessage, this.getServerName());
+                    AcceptedMessage acceptedMessage = new AcceptedMessage(message.n, message.block, this.serverName);
+                    message.paxos.acceptedPhase(acceptedMessage);
                 } else if (object instanceof AcceptedMessage) {
-                    System.out.println(this.getServerName() + " LEADER RECEIVED ACCEPTED MESSAGE");
+                    System.out.println("LEADER RECEIVED ACCEPTED MESSAGE");
+                    AcceptedMessage message = (AcceptedMessage) object;
+                    this.paxos.commitPhase(message.block, message.n, message.serverName);
+                } else if (object instanceof CommitMessage) {
+                    System.out.println("IN COMMIT PHASE " + this.serverName + " " + this);
+                    CommitMessage message = (CommitMessage) object;
+                    this.addToDatastore(message.block);
+                    this.lastBallotNumber = message.n;
+                    this.acceptNum = null;
+                    this.acceptVal = null;
+                    for(int i = 0; i < message.block.getLocalTransactions().size(); i++) {
+                        for(int j = 0; j < this.localLog.size(); j++) {
+                            if((message.block.getLocalTransactions().get(i).getTimestamp() == this.localLog.get(j).getTimestamp()) && (message.block.getLocalTransactions().get(i).getS1().equals(this.localLog.get(j).getS1())) && (message.block.getLocalTransactions().get(i).getS2().equals(this.localLog.get(j).getS2())) && (message.block.getLocalTransactions().get(i).getAmt() == this.localLog.get(j).getAmt())) {
+                                // remove from local log
+                                this.localLog.remove(this.localLog.get(j));
+                                break;
+                            }
+                        }
+                    }
+                    this.updateBalanceWithMajorBlock(message.block);
+                    if(this.serverName.equals(this.paxos.getLeader().getServerName())) {
+                        System.out.println("IN LEADER IF STATEMENT BALANCE IS: " + this.getBalance());
+                        this.paxos.postPaxos(this);
+                    }
+                    System.out.println(this.getServerName() + " " + this.getBalance());
 
                 }
 
@@ -208,12 +232,22 @@ public class Server implements Runnable, Serializable {
             this.numPromiseMessages = 0;
             this.loggedPromises = new ArrayList<>();
             this.enteredAccept = false;
-            this.paxos.preparePhase();
+            System.out.println("INITIATING PAXOS ON THIS SERVER: " + this);
+            this.paxos.preparePhase(t);
             // Send to paxos problem (class), say solve this problem for me
             // message passing between threads
+            // try now, if not enough money then failed to process transaction, else successful
 
         }
     }
+    public void updateBalanceWithMajorBlock(MajorBlock block) {
+        for(int i = 0; i < block.getLocalTransactions().size(); i++) {
+            if(block.getLocalTransactions().get(i).getS2().equals(this.serverName)) {
+                this.balance += block.getLocalTransactions().get(i).getAmt();
+            }
+        }
+    }
+
     public void sendMessage(int port, String message) {
         try {
             Socket socket = new Socket("localhost", port);
@@ -262,6 +296,18 @@ public class Server implements Runnable, Serializable {
         }
     }
     public void sendAcceptedMessage(int port, AcceptedMessage message) {
+        try {
+            Socket socket = new Socket("localhost", port);
+//            OutputStream outputStream = socket.getOutputStream();
+//            ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream);
+            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+            out.writeObject(message);
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void sendCommitMessage(int port, CommitMessage message) {
         try {
             Socket socket = new Socket("localhost", port);
 //            OutputStream outputStream = socket.getOutputStream();
