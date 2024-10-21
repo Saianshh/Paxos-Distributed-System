@@ -1,6 +1,7 @@
-import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Iterator;
+
 public class Paxos implements Serializable {
 //    @Serial
 //    private static final long serialVersionUID = 1L;
@@ -9,19 +10,13 @@ public class Paxos implements Serializable {
     private Server leader;
     private Transaction initialTransaction;
 
-    public Paxos(Server s1, Server s2, Server s3, Server s4, Server s5) {
-        this.servers = new ArrayList<Server>();
-        this.servers.add(s1);
-        this.servers.add(s2);
-        this.servers.add(s3);
-        this.servers.add(s4);
-        this.servers.add(s5);
-//        this.clients = new ArrayList<String>();
-//        this.clients.add("C1");
-//        this.clients.add("C2");
-//        this.clients.add("C3");
-//        this.clients.add("C4");
-//        this.clients.add("C5");
+    public Paxos(ArrayList<Server> servers) {
+        this.servers = servers;
+//        this.servers.add(s1);
+//        this.servers.add(s2);
+//        this.servers.add(s3);
+//        this.servers.add(s4);
+//        this.servers.add(s5);
     }
     public ArrayList<Server> getServers() {
         return this.servers;
@@ -98,8 +93,23 @@ public class Paxos implements Serializable {
         }
 
     }
-    public void postPaxos(Server server) {
-        server.performTransaction(this.initialTransaction);
+//    public void postPaxos(Server server) {
+//        server.performTransaction(this.initialTransaction);
+//    }
+    public void postPaxosQueue(Server server) {
+        System.out.println("QUEUE IN SERVER " + server.getServerName());
+        System.out.println(server.getQueue());
+        if(server.getQueue().peek() == null) {
+            server.getQueue().clear();
+        }
+        for (Transaction transaction : server.getQueue()) {
+            server.performTransaction(transaction);
+            server.getQueue().remove();
+        }
+
+    }
+    public void addFailedToQueue() {
+        this.leader.addToQueue(this.leader.getPaxosTransaction());
     }
 
 }
