@@ -31,6 +31,7 @@ public class Server implements Runnable, Serializable {
     private Transaction paxosTransaction;
     private boolean receivedPromises;
     private Queue<Transaction> queueNonMajority;
+    private boolean wasFailed;
 
     public Server(String serverName, int port) {
         this.serverName = serverName;
@@ -54,6 +55,8 @@ public class Server implements Runnable, Serializable {
         this.paxosTransaction = null;
         this.receivedPromises = false;
         this.queueNonMajority = new LinkedList<>();
+        this.wasFailed = false;
+
     }
 
     public String getServerName() {
@@ -106,6 +109,12 @@ public class Server implements Runnable, Serializable {
     }
     public void setMajorBlockNumbers(int majorBlockNumbers) {
         this.majorBlockNumbers = majorBlockNumbers;
+    }
+    public LinkedList<MajorBlock> getDatastore() {
+        return this.datastore;
+    }
+    public void setDatastore(LinkedList<MajorBlock> datastore) {
+        this.datastore = datastore;
     }
     public void addToDatastore(MajorBlock majorBlock) {
         this.datastore.add(majorBlock);
@@ -178,6 +187,12 @@ public class Server implements Runnable, Serializable {
     public void setEnteredAccept(boolean enteredAccept) {
         this.enteredAccept = enteredAccept;
     }
+    public boolean getWasFailed() {
+        return this.wasFailed;
+    }
+    public void setWasFailed(boolean wasFailed) {
+        this.wasFailed = wasFailed;
+    }
     public void run() {
         try {
             ServerSocket serverSocket = new ServerSocket(port);
@@ -202,14 +217,19 @@ public class Server implements Runnable, Serializable {
                 } else if (object instanceof PrepareMessage) {
                     System.out.println("Paxos was initiated");
                     PrepareMessage message = (PrepareMessage) object;
+                    if (this.wasFailed) {
+                        message.paxos.synchronizeServer(this);
+                        this.lastBallotNumber = message.lastCommittedBallot;
+                        this.wasFailed = false;
+                    }
                     System.out.println("RECEIVED PREPARE OBJECT FROM OTHER SERVER" + message.n);
                     if (this.lastBallotNumber != null) {
                         if(message.lastCommittedBallot.get(0) >= this.lastBallotNumber.get(0)) {
                             PromiseMessage promiseMessage;
                             if (this.acceptNum == null && this.acceptVal == null) {
-                                promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, this.localLog);
+                                promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, this.localLog, this);
                             } else {
-                                promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, null);
+                                promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, null, this);
                             }
                             this.currentBallotNumber = message.n;
                             message.paxos.promisePhase(promiseMessage, this.getServerName());
@@ -221,9 +241,9 @@ public class Server implements Runnable, Serializable {
                     } else {
                         PromiseMessage promiseMessage;
                         if (this.acceptNum == null && this.acceptVal == null) {
-                            promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, this.localLog);
+                            promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, this.localLog, this);
                         } else {
-                            promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, null);
+                            promiseMessage = new PromiseMessage(message.n, this.acceptNum, this.acceptVal, null, this);
                         }
                         this.currentBallotNumber = message.n;
                         message.paxos.promisePhase(promiseMessage, this.getServerName());
@@ -240,6 +260,15 @@ public class Server implements Runnable, Serializable {
                     } else {
                         this.setReceivedAcceptNum(message.acceptNum);
                         this.setReceivedAcceptVal(message.acceptVal);
+                        for(MajorBlock block : this.getDatastore()) {
+                            if((block.getBallotNum().get(0).equals(message.acceptVal.getBallotNum().get(0))) && block.getBallotNum().get(1).equals(message.acceptVal.getBallotNum().get(1))){
+                                this.paxos.synchronizeServer(message.server);
+                                message.server.setAcceptNum(null);
+                                message.server.setAcceptVal(null);
+                                message.server.setLastBallotNumber(this.lastBallotNumber);
+                                break;
+                            }
+                        }
                     }
                     if (this.numPromiseMessages >= 3 && !this.enteredAccept) {
                         this.receivedPromises = true;
@@ -278,8 +307,9 @@ public class Server implements Runnable, Serializable {
                         message.paxos.acceptedPhase(acceptedMessage);
 
                     } else {
-                        this.queue.add(this.paxosTransaction);
+//                        this.queue.add(this.paxosTransaction);
                         System.out.println("GETTING RID OF OLD PAXOS ADDING TO QUEUE: " + this.queue);
+                        message.paxos.getLeader().paxosInitiated = false;
                     }
                 } else if (object instanceof AcceptedMessage) {
                     System.out.println("LEADER RECEIVED ACCEPTED MESSAGE");
@@ -315,9 +345,9 @@ public class Server implements Runnable, Serializable {
 //                        System.out.println("IN LEADER IF STATEMENT BALANCE IS: " + this.getBalance());
 //                        this.paxos.postPaxos(this);
 //                    }
-                    if(this.queue.size() != 0) {
-                        this.paxos.postPaxosQueue(this);
-                    }
+//                    if(this.queue.size() != 0) {
+//                        this.paxos.postPaxosQueue(this);
+//                    }
                     System.out.println(this.getServerName() + " " + this.getBalance());
 
                 }

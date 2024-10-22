@@ -102,14 +102,31 @@ public class Paxos implements Serializable {
         if(server.getQueue().peek() == null) {
             server.getQueue().clear();
         }
-        for (Transaction transaction : server.getQueue()) {
-            server.performTransaction(transaction);
-            server.getQueue().remove();
-        }
+//        for (Transaction transaction : server.getQueue()) {
+//            System.out.println(transaction);
+////            System.out.println(server.getQueue());
+        server.performTransaction(server.getQueue().peek());
+        server.getQueue().remove();
+
 
     }
     public void addFailedToQueue() {
         this.leader.addToQueue(this.leader.getPaxosTransaction());
+    }
+
+    public void synchronizeServer(Server server) {
+        for(MajorBlock block : this.leader.getDatastore()) {
+            boolean serverHas = false;
+            for(MajorBlock blockServer : server.getDatastore()) {
+                if((block.getBallotNum().get(0).equals(blockServer.getBallotNum().get(0))) && (block.getBallotNum().get(1).equals(blockServer.getBallotNum().get(1)))) {
+                    serverHas = true;
+                }
+            }
+            if(!serverHas) {
+                CommitMessage commitMessage = new CommitMessage(block.getBallotNum(), block, this);
+                this.leader.sendCommitMessage(server.getPort(), commitMessage);
+            }
+        }
     }
 
 }

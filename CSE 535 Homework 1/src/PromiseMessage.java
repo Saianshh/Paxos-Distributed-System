@@ -9,11 +9,13 @@ public class PromiseMessage implements Serializable {
     public ArrayList<Integer> acceptNum;
     public MajorBlock acceptVal;
     public ArrayList<Transaction> localLog;
+    public Server server;
 
-    public PromiseMessage(ArrayList<Integer> n, ArrayList<Integer> acceptNum, MajorBlock acceptVal, ArrayList<Transaction> localLog) {
+    public PromiseMessage(ArrayList<Integer> n, ArrayList<Integer> acceptNum, MajorBlock acceptVal, ArrayList<Transaction> localLog, Server server) {
         this.n = n;
         this.acceptNum = acceptNum;
         this.acceptVal = acceptVal;
         this.localLog = localLog;
+        this.server = server;
     }
 }

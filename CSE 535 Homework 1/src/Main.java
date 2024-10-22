@@ -96,6 +96,20 @@ public class Main {
                 servers[j].setPaxos(newPaxos);
             }
             for(int j = 0; j < servers.length; j++) {
+                if(!newServerSet.contains(servers[j])) {
+                    servers[j].setWasFailed(true);
+                    // Crashed and may have had local transactions
+                    System.out.println("Set " + servers[j].getServerName() + " to fail");
+                    System.out.println(servers[j].getLocalLog());
+                    for(int k = 0; k < servers[j].getLocalLog().size(); k++) {
+                        servers[j].setBalance(servers[j].getBalance() + servers[j].getLocalLog().get(k).getAmt());
+                    }
+                    servers[j].getLocalLog().clear();
+                } else {
+                    servers[j].setWasFailed(false);
+                }
+            }
+            for(int j = 0; j < servers.length; j++) {
                 if(servers[j].getQueueNonMajority().size() > 0) {
                     if(servers[j].getQueueNonMajority().peek() == null) {
                         servers[j].getQueueNonMajority().clear();
@@ -120,7 +134,7 @@ public class Main {
             for(int j = 0; j < servers.length; j++) {
                 if (servers[j].getPaxosInitiated()) {
 //                    while (servers[j].getPaxosInitiated()) {
-                    Thread.sleep(500);
+                    Thread.sleep(2000);
                     System.out.println("waiting for paxos to finish");
                     if (servers[j].getNumPromiseMessages() < 3) {
                         // If not enough promises were received, queue the transaction
@@ -130,7 +144,10 @@ public class Main {
                         servers[j].setNumPromiseMessages(0);
                         servers[j].setEnteredAccept(false);
                         servers[j].setPaxosInitiated(false);
+                    } else if(servers[j].getQueue().size() > 0) {
+                        servers[j].getPaxos().postPaxosQueue(servers[j]);
                     }
+
 //
                 }
             }
