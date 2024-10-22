@@ -37,7 +37,7 @@ public class Paxos implements Serializable {
         return this.initialTransaction;
     }
     public void preparePhase(Transaction t) {
-        System.out.println("In the prepare phase of paxos");
+//        System.out.println("In the prepare phase of paxos");
         this.setInitialTransaction(t);
         for (Server server : this.servers) {
 //            if (!this.leader.getServerName().equals(server.getServerName())) {
@@ -66,8 +66,8 @@ public class Paxos implements Serializable {
 
     }
     public void acceptPhase(MajorBlock block, ArrayList<Integer> ballotNum) {
-        System.out.println("IN ACCEPT PHASE");
-        System.out.println(block.getLocalTransactions());
+//        System.out.println("IN ACCEPT PHASE");
+//        System.out.println(block.getLocalTransactions());
         for (Server server : this.servers) {
 //            if (!this.leader.getServerName().equals(server.getServerName())) {
             AcceptMessage acceptMessage = new AcceptMessage(ballotNum, block, this);
@@ -84,7 +84,7 @@ public class Paxos implements Serializable {
         }
     }
     public void commitPhase(MajorBlock block, ArrayList<Integer> ballotNum, String serverName) {
-        System.out.println("IN COMMIT IN PAXOS CLASS SIZE OF SERVERS: " +this.servers.size());
+//        System.out.println("IN COMMIT IN PAXOS CLASS SIZE OF SERVERS: " +this.servers.size());
         for (Server server : this.servers) {
             if (serverName.equals(server.getServerName())) {
                 CommitMessage commitMessage = new CommitMessage(ballotNum, block, this);
@@ -97,14 +97,15 @@ public class Paxos implements Serializable {
 //        server.performTransaction(this.initialTransaction);
 //    }
     public void postPaxosQueue(Server server) {
-        System.out.println("QUEUE IN SERVER " + server.getServerName());
-        System.out.println(server.getQueue());
+//        System.out.println("QUEUE IN SERVER " + server.getServerName());
+//        System.out.println(server.getQueue());
         if(server.getQueue().peek() == null) {
             server.getQueue().clear();
         }
 //        for (Transaction transaction : server.getQueue()) {
 //            System.out.println(transaction);
 ////            System.out.println(server.getQueue());
+
         server.performTransaction(server.getQueue().peek());
         server.getQueue().remove();
 

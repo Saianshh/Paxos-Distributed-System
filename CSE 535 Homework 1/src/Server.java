@@ -196,8 +196,8 @@ public class Server implements Runnable, Serializable {
     public void run() {
         try {
             ServerSocket serverSocket = new ServerSocket(port);
-            System.out.println("Thread " + this.getServerName() + " is running");
-            System.out.println("Server " + this.getServerName() + " listening on port " + port);
+//            System.out.println("Thread " + this.getServerName() + " is running");
+//            System.out.println("Server " + this.getServerName() + " listening on port " + port);
             while (true) {
                 // Wait for a client to send a transaction
                 Socket clientSocket = serverSocket.accept();
@@ -215,14 +215,14 @@ public class Server implements Runnable, Serializable {
                     Transaction t = new Transaction(sender, receiver, amount);
                     this.performTransaction(t);
                 } else if (object instanceof PrepareMessage) {
-                    System.out.println("Paxos was initiated");
+//                    System.out.println("Paxos was initiated");
                     PrepareMessage message = (PrepareMessage) object;
                     if (this.wasFailed) {
                         message.paxos.synchronizeServer(this);
                         this.lastBallotNumber = message.lastCommittedBallot;
                         this.wasFailed = false;
                     }
-                    System.out.println("RECEIVED PREPARE OBJECT FROM OTHER SERVER" + message.n);
+//                    System.out.println("RECEIVED PREPARE OBJECT FROM OTHER SERVER" + message.n);
                     if (this.lastBallotNumber != null) {
                         if(message.lastCommittedBallot.get(0) >= this.lastBallotNumber.get(0)) {
                             PromiseMessage promiseMessage;
@@ -234,9 +234,9 @@ public class Server implements Runnable, Serializable {
                             this.currentBallotNumber = message.n;
                             message.paxos.promisePhase(promiseMessage, this.getServerName());
                         } else {
-                            System.out.println(this.lastBallotNumber);
-                            System.out.println(message.lastCommittedBallot);
-                            System.out.println("server lastballot greater than leader");
+//                            System.out.println(this.lastBallotNumber);
+//                            System.out.println(message.lastCommittedBallot);
+//                            System.out.println("server lastballot greater than leader");
                         }
                     } else {
                         PromiseMessage promiseMessage;
@@ -249,7 +249,7 @@ public class Server implements Runnable, Serializable {
                         message.paxos.promisePhase(promiseMessage, this.getServerName());
                     }
                 } else if (object instanceof PromiseMessage) {
-                    System.out.println("Leader receiving promise message " + this.serverName + " " + this);
+//                    System.out.println("Leader receiving promise message " + this.serverName + " " + this);
                     this.numPromiseMessages += 1;
                     PromiseMessage message = (PromiseMessage) object;
                     if (message.acceptNum == null && message.acceptVal == null) {
@@ -294,12 +294,12 @@ public class Server implements Runnable, Serializable {
 //                        this.paxos.addFailedToQueue();
 //                    }
                 } else if (object instanceof AcceptMessage) {
-                    System.out.println("RECEIVED ACCEPT MESSAGE FROM LEADER " + this.serverName + " " + this);
+//                    System.out.println("RECEIVED ACCEPT MESSAGE FROM LEADER " + this.serverName + " " + this);
                     // Update acceptNum and acceptVal
                     AcceptMessage message = (AcceptMessage) object;
-                    System.out.println("PRINTING N TO SEE WHICH IS BIGGER " + message.n + message + " , " + this.currentBallotNumber);
+//                    System.out.println("PRINTING N TO SEE WHICH IS BIGGER " + message.n + message + " , " + this.currentBallotNumber);
                     if(message.n.get(0) >= this.currentBallotNumber.get(0)) {
-                        System.out.println("NOT GETTING RID OF OLD PAXOS");
+//                        System.out.println("NOT GETTING RID OF OLD PAXOS");
                         this.acceptNum = message.n;
                         this.acceptVal = message.block;
                         // Send accepted message
@@ -308,34 +308,34 @@ public class Server implements Runnable, Serializable {
 
                     } else {
 //                        this.queue.add(this.paxosTransaction);
-                        System.out.println("GETTING RID OF OLD PAXOS ADDING TO QUEUE: " + this.queue);
+//                        System.out.println("GETTING RID OF OLD PAXOS ADDING TO QUEUE: " + this.queue);
                         message.paxos.getLeader().paxosInitiated = false;
                     }
                 } else if (object instanceof AcceptedMessage) {
-                    System.out.println("LEADER RECEIVED ACCEPTED MESSAGE");
+//                    System.out.println("LEADER RECEIVED ACCEPTED MESSAGE");
                     AcceptedMessage message = (AcceptedMessage) object;
                     this.paxos.commitPhase(message.block, message.n, message.serverName);
                 } else if (object instanceof CommitMessage) {
-                    System.out.println("IN COMMIT PHASE " + this.serverName + " " + this);
+//                    System.out.println("IN COMMIT PHASE " + this.serverName + " " + this);
                     CommitMessage message = (CommitMessage) object;
                     this.addToDatastore(message.block);
                     this.lastBallotNumber = message.n;
                     this.acceptNum = null;
                     this.acceptVal = null;
 
-                    System.out.println("PRINTING LOCAL TRANSACTIONS");
-                    System.out.println(message.block.getLocalTransactions());
-                    System.out.println("PRINTING LOCAL LOG");
-                    System.out.println(this.localLog);
+//                    System.out.println("PRINTING LOCAL TRANSACTIONS");
+//                    System.out.println(message.block.getLocalTransactions());
+//                    System.out.println("PRINTING LOCAL LOG");
+//                    System.out.println(this.localLog);
                     for(int i = 0; i < message.block.getLocalTransactions().size(); i++) {
                         for(int j = 0; j < this.localLog.size(); j++) {
                             if((message.block.getLocalTransactions().get(i).getTimestamp().equals(this.localLog.get(j).getTimestamp())) && (message.block.getLocalTransactions().get(i).getS1().equals(this.localLog.get(j).getS1())) && (message.block.getLocalTransactions().get(i).getS2().equals(this.localLog.get(j).getS2())) && (message.block.getLocalTransactions().get(i).getAmt() == this.localLog.get(j).getAmt())) {
                                 // remove from local log
-                                System.out.println("PRIOR TO REMOVING FROM LOCAL LOG");
-                                System.out.println(this.localLog);
+//                                System.out.println("PRIOR TO REMOVING FROM LOCAL LOG");
+//                                System.out.println(this.localLog);
                                 this.localLog.remove(this.localLog.get(j));
-                                System.out.println("AFTER REMOVING FROM LOCAL LOG");
-                                System.out.println(this.localLog);
+//                                System.out.println("AFTER REMOVING FROM LOCAL LOG");
+//                                System.out.println(this.localLog);
                                 break;
                             }
                         }
@@ -348,7 +348,7 @@ public class Server implements Runnable, Serializable {
 //                    if(this.queue.size() != 0) {
 //                        this.paxos.postPaxosQueue(this);
 //                    }
-                    System.out.println(this.getServerName() + " " + this.getBalance());
+//                    System.out.println(this.getServerName() + " " + this.getBalance());
 
                 }
                 clientSocket.close();
@@ -365,16 +365,16 @@ public class Server implements Runnable, Serializable {
             // don't reply to client
 //            client.setBalance(this.getBalance());
 
-            System.out.println("Client and server: " + this.getServerName() + " balance is now:" + this.getBalance());
+//            System.out.println("Client and server: " + this.getServerName() + " balance is now:" + this.getBalance());
         } else {
             ballotNum += 1;
-            System.out.println("Paxos needs to be initiated");
+//            System.out.println("Paxos needs to be initiated");
             this.paxos.setLeader(this);
             this.numPromiseMessages = 0;
             this.loggedPromises = new ArrayList<>();
             this.enteredAccept = false;
-            System.out.println("INITIATING PAXOS ON THIS SERVER: " + this.serverName);
-            System.out.println("PAXOS TRANSACTION IS: " + t);
+//            System.out.println("INITIATING PAXOS ON THIS SERVER: " + this.serverName);
+//            System.out.println("PAXOS TRANSACTION IS: " + t);
             this.paxosInitiated = true;
             this.paxosTransaction = t;
             this.queue.add(t);

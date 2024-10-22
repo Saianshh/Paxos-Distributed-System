@@ -3,6 +3,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+
 public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
         // Replace with input file for testing
@@ -27,7 +28,7 @@ public class Main {
         for(Map.Entry<Integer, ArrayList<String>> entry : sets.entrySet()) {
             int key = entry.getKey();
             ArrayList<String> value = entry.getValue();
-            System.out.println(key + ": " + value);
+//            System.out.println(key + ": " + value);
         }
 
         int[] ports = {5000, 5001, 5002, 5003, 5004};
@@ -73,7 +74,7 @@ public class Main {
 //        }
         // Get first set of transactions and attempt to run with it
         for(int i = 1; i < sets.size()+1; i++) {
-            System.out.println(sets.get(i));
+//            System.out.println(sets.get(i));
             String[] aliveServers = sets.get(i).get(0).split(", ");
             for(int j = 0; j < aliveServers.length; j++) {
                 aliveServers[j] = aliveServers[j].replaceAll("\\[", "");
@@ -89,8 +90,8 @@ public class Main {
                     }
                 }
             }
-            System.out.println("NEW SERVER SET");
-            System.out.println(newServerSet);
+//            System.out.println("NEW SERVER SET");
+//            System.out.println(newServerSet);
             Paxos newPaxos = new Paxos(newServerSet);
             for(int j = 0; j < servers.length; j++) {
                 servers[j].setPaxos(newPaxos);
@@ -99,8 +100,8 @@ public class Main {
                 if(!newServerSet.contains(servers[j])) {
                     servers[j].setWasFailed(true);
                     // Crashed and may have had local transactions
-                    System.out.println("Set " + servers[j].getServerName() + " to fail");
-                    System.out.println(servers[j].getLocalLog());
+//                    System.out.println("Set " + servers[j].getServerName() + " to fail");
+//                    System.out.println(servers[j].getLocalLog());
                     for(int k = 0; k < servers[j].getLocalLog().size(); k++) {
                         servers[j].setBalance(servers[j].getBalance() + servers[j].getLocalLog().get(k).getAmt());
                     }
@@ -120,6 +121,7 @@ public class Main {
                     }
                 }
             }
+            long start = System.currentTimeMillis();
             for(int j = 1; j < sets.get(i).size(); j++) {
                 String s = sets.get(i).get(j);
                 String firstServer = s.substring(1, s.indexOf(","));
@@ -134,12 +136,12 @@ public class Main {
             for(int j = 0; j < servers.length; j++) {
                 if (servers[j].getPaxosInitiated()) {
 //                    while (servers[j].getPaxosInitiated()) {
-                    Thread.sleep(2000);
-                    System.out.println("waiting for paxos to finish");
+                    Thread.sleep(500);
+//                    System.out.println("waiting for paxos to finish");
                     if (servers[j].getNumPromiseMessages() < 3) {
                         // If not enough promises were received, queue the transaction
-                        System.out.println("Not enough promises, queuing the transaction for later.");
-                        System.out.println("Adding " + servers[j].getPaxosTransaction() + " to the queue");
+//                        System.out.println("Not enough promises, queuing the transaction for later.");
+//                        System.out.println("Adding " + servers[j].getPaxosTransaction() + " to the queue");
                         servers[j].addToQueueNonMajority(servers[j].getPaxosTransaction());  // Add the transaction to the queue for later execution
                         servers[j].setNumPromiseMessages(0);
                         servers[j].setEnteredAccept(false);
@@ -151,15 +153,59 @@ public class Main {
 //
                 }
             }
-            System.out.println("Press any key for balances after this set: ");
-            input.nextLine();
-            for(int j = 0; j < servers.length; j++) {
-                System.out.println("Server " + servers[j].getServerName() + ": " + servers[j].getBalance());
+            long end = System.currentTimeMillis();
+            int size = sets.get(i).size()-1;
+            boolean nextSet = false;
+            System.out.println("Set " + i + ":");
+            while(!nextSet) {
+                System.out.println("MENU:");
+                System.out.println("Press the b key for balances after this set");
+                System.out.println("Press the l key to see local logs of a server");
+                System.out.println("Press the d key to see the current datastore");
+                System.out.println("Press the t key to see throughput and latency for this set");
+                System.out.println("Press the n key to go onto the next set");
+                System.out.println("Enter your selection (case sensitive): ");
+                String given = input.nextLine();
+                if(given.equals("b")) {
+                    PrintBalance(servers);
+                } else if(given.equals("l")) {
+                    System.out.println("Which server would you like to see? (S1-S5, case sensitive): ");
+                    String givenServer = input.nextLine();
+                    for(int s = 0; s < servers.length; s++) {
+                        if(servers[s].getServerName().equals(givenServer)) {
+                            PrintLog(servers[s]);
+                        }
+                    }
+                } else if(given.equals("d")) {
+                    PrintDB(servers);
+                } else if(given.equals("t")) {
+                    Performance(start, end, size);
+                } else if(given.equals("n")) {
+                    nextSet = true;
+                }
             }
-            System.out.println("Next set of transaction, press any key: ");
-            input.nextLine();
         }
         // Each entry of hashmap is a new set, do a loop through all of them, after completion of each set prompt user with menu
 
+    }
+    public static void PrintBalance(Server[] servers) {
+        for(int j = 0; j < servers.length; j++) {
+            System.out.println("Server " + servers[j].getServerName() + ": " + servers[j].getBalance());
+        }
+    }
+    public static void PrintLog(Server server) {
+        System.out.println(server.getLocalLog());
+    }
+    public static void PrintDB(Server[] servers) {
+        for(MajorBlock block : servers[0].getDatastore()) {
+            System.out.print(block + " -> ");
+        }
+        System.out.println();
+    }
+    public static void Performance(long start, long end, int total) {
+        long latency = end - start;
+        double seconds = latency / 1000.0;
+        double throughput = total / seconds;
+        System.out.println("Throughput: " + throughput + " transactions per second, Latency: " + latency + " ms");
     }
 }

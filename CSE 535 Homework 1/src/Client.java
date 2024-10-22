@@ -36,7 +36,7 @@ public class Client implements Serializable {
     }
     public void sendTransaction(Transaction t) throws IOException {
         // Send a transaction to server
-        System.out.println("CLIENT SIDE PRE SOCKET: " + t.getS1() + " sending " + t.getAmt() + " to " + t.getS2());
+//        System.out.println("CLIENT SIDE PRE SOCKET: " + t.getS1() + " sending " + t.getAmt() + " to " + t.getS2());
         try {
             Socket socket = new Socket("localhost", this.port);
 //            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
@@ -49,7 +49,7 @@ public class Client implements Serializable {
             // Get confirmation from the server
             String confirmation = in.readLine();
 
-            System.out.println("Server response: " + confirmation);
+//            System.out.println("Server response: " + confirmation);
             // May get rid of this line
             socket.close();
             } catch (IOException e){
